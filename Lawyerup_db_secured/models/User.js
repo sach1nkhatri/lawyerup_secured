@@ -17,6 +17,22 @@ const userSchema = new mongoose.Schema({
     required: true,
     select: false
   },
+  // Password history: stores hashed versions of previous passwords
+  // Used to prevent password reuse (last N passwords)
+  passwordHistory: [{
+    type: String, // Hashed passwords
+    select: false
+  }],
+  // Timestamp when password was last changed
+  passwordChangedAt: {
+    type: Date,
+    default: Date.now
+  },
+  // Timestamp when password expires (null = no expiry)
+  passwordExpiresAt: {
+    type: Date,
+    default: null
+  },
   contactNumber: {
     type: String,
     required: true
@@ -147,6 +163,80 @@ userSchema.methods.resetLoginAttempts = async function() {
   // Reset both failed attempts and lock status on successful login
   this.failedLoginAttempts = 0;
   this.lockUntil = null;
+  await this.save();
+};
+
+// ==================== Password Policy Instance Methods ====================
+
+/**
+ * Check if password has expired
+ * @returns {Boolean} true if password is expired, false otherwise
+ */
+userSchema.methods.isPasswordExpired = function() {
+  // If no expiry date is set, password never expires
+  if (!this.passwordExpiresAt) {
+    return false;
+  }
+  // Check if expiry date has passed
+  return this.passwordExpiresAt <= Date.now();
+};
+
+/**
+ * Check if password is reused (matches any password in history)
+ * @param {String} plainPassword - Plain text password to check
+ * @param {Function} compareFn - Async function to compare password with hash (bcrypt.compare)
+ * @returns {Promise<Boolean>} true if password is reused
+ */
+userSchema.methods.isPasswordReused = async function(plainPassword, compareFn) {
+  if (!this.passwordHistory || this.passwordHistory.length === 0) {
+    return false;
+  }
+
+  // Check against all passwords in history
+  for (const hashedPassword of this.passwordHistory) {
+    const isMatch = await compareFn(plainPassword, hashedPassword);
+    if (isMatch) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Update password and maintain history
+ * @param {String} newHashedPassword - New hashed password
+ * @param {Number} historyCount - Number of previous passwords to keep (default: 5)
+ * @param {Number} expiryDays - Days until password expires (null = no expiry)
+ * @returns {Promise<void>}
+ */
+userSchema.methods.updatePassword = async function(newHashedPassword, historyCount = 5, expiryDays = 90) {
+  // Add current password to history before changing
+  if (this.password) {
+    // Add to beginning of array (most recent first)
+    this.passwordHistory.unshift(this.password);
+    
+    // Keep only the last N passwords
+    if (this.passwordHistory.length > historyCount) {
+      this.passwordHistory = this.passwordHistory.slice(0, historyCount);
+    }
+  }
+
+  // Update password
+  this.password = newHashedPassword;
+  
+  // Update password changed timestamp
+  this.passwordChangedAt = Date.now();
+  
+  // Set password expiry date
+  if (expiryDays && expiryDays > 0) {
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
+    this.passwordExpiresAt = expiryDate;
+  } else {
+    this.passwordExpiresAt = null;
+  }
+
   await this.save();
 };
 

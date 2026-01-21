@@ -13,6 +13,11 @@ const {
   logMfaVerifyFailed,
   logMfaVerifySuccess
 } = require('../utils/securityLogger');
+const {
+  validatePassword,
+  PASSWORD_EXPIRY_DAYS,
+  PASSWORD_ERRORS
+} = require('../utils/passwordPolicy');
 
 
 exports.register = async (req, res) => {
@@ -25,17 +30,36 @@ exports.register = async (req, res) => {
   } = req.body;
 
   try {
+    // Validate password against policy
+    // TODO: Frontend should implement password strength meter for better UX
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        message: 'Password does not meet requirements',
+        errors: passwordValidation.errors
+      });
+    }
+
     const userExists = await User.findOne({ email });
     if (userExists) return res.status(400).json({ message: 'Email already exists' });
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Calculate password expiry date
+    const passwordExpiresAt = PASSWORD_EXPIRY_DAYS 
+      ? new Date(Date.now() + PASSWORD_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+      : null;
 
     const newUser = await User.create({
       fullName,
       email,
       password: hashedPassword,
       role,
-      contactNumber
+      contactNumber,
+      passwordChangedAt: Date.now(),
+      passwordExpiresAt,
+      passwordHistory: [] // No history for new users
     });
 
     // Prepare user object without password
@@ -145,6 +169,15 @@ exports.login = async (req, res) => {
     // Log successful login
     logLoginSuccess(user._id.toString(), user.email, clientIp, user.mfaEnabled);
     
+    // Check if password has expired
+    if (user.isPasswordExpired()) {
+      return res.status(403).json({
+        message: PASSWORD_ERRORS.EXPIRED_PASSWORD,
+        passwordExpired: true,
+        requiresPasswordChange: true
+      });
+    }
+    
     // Check if MFA is enabled for this user
     if (user.mfaEnabled) {
       // Return MFA token instead of access token
@@ -153,14 +186,16 @@ exports.login = async (req, res) => {
         mfaRequired: true,
         mfaToken,
         userId: user._id,
-        email: user.email
+        email: user.email,
+        passwordExpiresAt: user.passwordExpiresAt // Include expiry info
       });
     }
     
     // Normal login flow for users without MFA
     res.json({
       user,
-      token: generateToken(user._id)
+      token: generateToken(user._id),
+      passwordExpiresAt: user.passwordExpiresAt // Include expiry info for frontend
     });
   } catch (err) {
     console.error('[Login Error]', err);
@@ -229,17 +264,36 @@ exports.registerAdmin = async (req, res) => {
   }
 
   try {
+    // Validate password against policy (admins must also follow password policy)
+    // TODO: Frontend should implement password strength meter for better UX
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        message: 'Password does not meet requirements',
+        errors: passwordValidation.errors
+      });
+    }
+
     const userExists = await User.findOne({ email });
     if (userExists) return res.status(400).json({ message: 'Email already registered' });
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Calculate password expiry date
+    const passwordExpiresAt = PASSWORD_EXPIRY_DAYS 
+      ? new Date(Date.now() + PASSWORD_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+      : null;
 
     const newAdmin = await User.create({
       fullName,
       email,
       password: hashedPassword,
       role: 'admin',
-      contactNumber: 'N/A'
+      contactNumber: 'N/A',
+      passwordChangedAt: Date.now(),
+      passwordExpiresAt,
+      passwordHistory: [] // No history for new users
     });
 
     const token = generateToken(newAdmin._id);
@@ -591,5 +645,78 @@ exports.mfaDisable = async (req, res) => {
   } catch (err) {
     console.error('[MFA Disable Error]', err);
     res.status(500).json({ message: 'Failed to disable MFA', error: err.message });
+  }
+};
+
+/**
+ * POST /api/auth/change-password
+ * Change user password with password policy enforcement
+ * Requires authentication
+ */
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ 
+      message: 'Current password and new password are required' 
+    });
+  }
+
+  try {
+    // Load user with password and password history
+    const user = await User.findById(req.user.id).select('+password +passwordHistory');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    // Validate new password against policy
+    // TODO: Frontend should implement password strength meter for better UX
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        message: 'New password does not meet requirements',
+        errors: passwordValidation.errors
+      });
+    }
+
+    // Check if new password is the same as current password
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({ 
+        message: 'New password must be different from current password' 
+      });
+    }
+
+    // Check if new password is reused (matches any password in history)
+    const isReused = await user.isPasswordReused(newPassword, bcrypt.compare);
+    if (isReused) {
+      return res.status(400).json({
+        message: PASSWORD_ERRORS.REUSED_PASSWORD
+      });
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password using helper method (maintains history and sets expiry)
+    await user.updatePassword(
+      hashedNewPassword,
+      5, // Keep last 5 passwords in history
+      PASSWORD_EXPIRY_DAYS // Set expiry date
+    );
+
+    // TODO: Log audit event if audit log exists
+
+    res.json({ 
+      message: 'Password changed successfully',
+      passwordExpiresAt: user.passwordExpiresAt
+    });
+  } catch (err) {
+    console.error('[Change Password Error]', err);
+    res.status(500).json({ message: 'Failed to change password', error: err.message });
   }
 };

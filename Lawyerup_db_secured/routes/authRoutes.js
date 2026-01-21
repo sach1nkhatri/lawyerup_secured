@@ -11,7 +11,8 @@ const {
   mfaSetup,
   mfaConfirm,
   mfaVerify,
-  mfaDisable
+  mfaDisable,
+  changePassword
 } = require('../controllers/authController');
 const auth = require('../middleware/authMiddleware');
 const User = require('../models/User');
@@ -56,6 +57,9 @@ router.patch('/status/:id', adminAuth, updateUserStatus);
 router.patch('/update-profile', auth, updateProfile);
 router.post('/admin/register', registerAdmin);
 router.post('/admin/login', loginAdmin);
+
+// POST /api/auth/change-password - Change user password (requires auth)
+router.post('/change-password', auth, changePassword);
 
 // ==================== MFA (Multi-Factor Authentication) Routes ====================
 // POST /api/auth/mfa/setup - Generate TOTP secret and QR code (requires auth)
