@@ -18,6 +18,7 @@ const {
   PASSWORD_EXPIRY_DAYS,
   PASSWORD_ERRORS
 } = require('../utils/passwordPolicy');
+const { setAccessTokenCookie, clearAccessTokenCookie } = require('../utils/cookieHelpers');
 
 
 exports.register = async (req, res) => {
@@ -72,9 +73,14 @@ exports.register = async (req, res) => {
       contactNumber: newUser.contactNumber
     };
 
+    // Set access token as httpOnly cookie (more secure than returning in body)
+    // Security: httpOnly cookies prevent XSS attacks from stealing tokens
+    const accessToken = generateToken(newUser._id);
+    setAccessTokenCookie(res, accessToken);
+
     res.status(201).json({
-      user: userResponse,
-      token: generateToken(newUser._id)
+      user: userResponse
+      // Token no longer returned in body for security (stored in httpOnly cookie)
     });
 
   } catch (err) {
@@ -192,9 +198,15 @@ exports.login = async (req, res) => {
     }
     
     // Normal login flow for users without MFA
+    // Set access token as httpOnly cookie (more secure than returning in body)
+    // Security: httpOnly cookies prevent XSS attacks from stealing tokens
+    const accessToken = generateToken(user._id);
+    setAccessTokenCookie(res, accessToken);
+    
     res.json({
       user,
-      token: generateToken(user._id),
+      // Token no longer returned in body for security (stored in httpOnly cookie)
+      // Frontend should rely on cookie for subsequent requests
       passwordExpiresAt: user.passwordExpiresAt // Include expiry info for frontend
     });
   } catch (err) {
@@ -214,9 +226,14 @@ exports.loginAdmin = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
 
+    // Set access token as httpOnly cookie (more secure than returning in body)
+    // Security: httpOnly cookies prevent XSS attacks from stealing tokens
+    const accessToken = generateToken(user._id);
+    setAccessTokenCookie(res, accessToken);
+
     res.json({
-      user,
-      token: generateToken(user._id)
+      user
+      // Token no longer returned in body for security (stored in httpOnly cookie)
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -296,7 +313,10 @@ exports.registerAdmin = async (req, res) => {
       passwordHistory: [] // No history for new users
     });
 
+    // Set access token as httpOnly cookie (more secure than returning in body)
+    // Security: httpOnly cookies prevent XSS attacks from stealing tokens
     const token = generateToken(newAdmin._id);
+    setAccessTokenCookie(res, token);
 
     res.status(201).json({
       message: '✅ Admin registered successfully',
@@ -305,8 +325,8 @@ exports.registerAdmin = async (req, res) => {
         fullName: newAdmin.fullName,
         email: newAdmin.email,
         role: newAdmin.role
-      },
-      token
+      }
+      // Token no longer returned in body for security (stored in httpOnly cookie)
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -546,8 +566,12 @@ exports.mfaVerify = async (req, res) => {
       verificationMethod
     );
 
-    // Generate and return normal access token
+    // Generate access token and set as httpOnly cookie
+    // Security: httpOnly cookies prevent XSS attacks from stealing tokens
+    // Note: mfaToken remains in JSON body (temporary, short-lived) but final
+    // access token is stored securely in httpOnly cookie
     const accessToken = generateToken(user._id);
+    setAccessTokenCookie(res, accessToken);
 
     // Prepare safe user payload (without sensitive fields)
     const safeUserPayload = {
@@ -560,7 +584,8 @@ exports.mfaVerify = async (req, res) => {
     };
 
     res.json({
-      token: accessToken,
+      // Token no longer returned in body for security (stored in httpOnly cookie)
+      // Frontend should rely on cookie for subsequent requests
       user: safeUserPayload
     });
   } catch (err) {
@@ -718,5 +743,30 @@ exports.changePassword = async (req, res) => {
   } catch (err) {
     console.error('[Change Password Error]', err);
     res.status(500).json({ message: 'Failed to change password', error: err.message });
+  }
+};
+
+/**
+ * POST /api/auth/logout
+ * Logout user by clearing authentication cookies
+ * Requires authentication
+ * 
+ * Security: Clears httpOnly cookie containing access token
+ * This invalidates the session on the client side
+ */
+exports.logout = async (req, res) => {
+  try {
+    // Clear access token cookie
+    // Security: This invalidates the session token stored in httpOnly cookie
+    // The cookie is automatically removed by the browser
+    clearAccessTokenCookie(res);
+
+    // TODO: If using refresh tokens or session store, invalidate them here
+    // Example: await Session.deleteOne({ userId: req.user.id });
+
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    console.error('[Logout Error]', err);
+    res.status(500).json({ message: 'Failed to logout', error: err.message });
   }
 };

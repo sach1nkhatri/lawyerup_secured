@@ -2,6 +2,7 @@
 const dotenv = require('dotenv');
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const path = require('path');
 
@@ -28,8 +29,9 @@ const app = express();
 
 app.use(cors({
   origin: '*',
-  credentials: true
+  credentials: true // Required for httpOnly cookies
 }));
+app.use(cookieParser()); // Parse cookies from request
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

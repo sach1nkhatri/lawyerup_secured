@@ -3,6 +3,7 @@ const router = express.Router();
 const { 
   register, 
   login, 
+  logout,
   updateProfile, 
   getAllUsers,
   registerAdmin,
@@ -23,6 +24,10 @@ router.post('/signup', register);
 // Apply rate limiting to login endpoint to prevent brute-force attacks
 // Security: Limits to 5 attempts per 15 minutes per IP address
 router.post('/login', loginLimiter, login);
+
+// POST /api/auth/logout - Logout user (requires auth)
+// Security: Clears httpOnly cookie containing access token
+router.post('/logout', auth, logout);
 
 // 🔐 Authenticated user route
 router.get('/me', auth, async (req, res) => {
