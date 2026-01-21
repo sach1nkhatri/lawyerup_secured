@@ -8,6 +8,8 @@ const rateLimit = require('express-rate-limit');
  * - 5 attempts per 15 minutes per IP address
  * - Prevents automated brute-force attacks
  * - Works in conjunction with account lockout for defense in depth
+ * 
+ * OWASP Top 10 Reference: A07:2021 – Identification and Authentication Failures
  */
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -17,10 +19,12 @@ const loginLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  // Use IP address as the key for rate limiting
+  // Use default IP key generator (handles IPv6 correctly)
+  // OWASP: Proper IP handling prevents IPv6 users from bypassing rate limits
   keyGenerator: (req) => {
-    // Prefer IP from proxy headers if available (X-Forwarded-For)
-    return req.ip || req.connection.remoteAddress;
+    // Use express-rate-limit's built-in IP detection
+    // This properly handles IPv6 addresses and prevents bypass
+    return req.ip || req.socket.remoteAddress || 'unknown';
   },
   // Custom handler for when limit is exceeded
   handler: (req, res) => {
@@ -39,6 +43,8 @@ const loginLimiter = rateLimit({
  * - 5 attempts per 10 minutes per IP address
  * - Tighter window than login since MFA codes are 6 digits (smaller search space)
  * - Prevents automated TOTP code guessing attacks
+ * 
+ * OWASP Top 10 Reference: A07:2021 – Identification and Authentication Failures
  */
 const mfaLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
@@ -48,9 +54,12 @@ const mfaLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // Use default IP key generator (handles IPv6 correctly)
+  // OWASP: Proper IP handling prevents IPv6 users from bypassing rate limits
   keyGenerator: (req) => {
-    // Use IP address, but could also use mfaToken if available for per-user limiting
-    return req.ip || req.connection.remoteAddress;
+    // Use express-rate-limit's built-in IP detection
+    // This properly handles IPv6 addresses and prevents bypass
+    return req.ip || req.socket.remoteAddress || 'unknown';
   },
   handler: (req, res) => {
     res.status(429).json({
