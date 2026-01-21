@@ -1,0 +1,78 @@
+.user-booking-card {
+    background: #e3f0ff;
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    font-family: 'Segoe UI', sans-serif;
+    max-width: 700px;
+    margin: 1rem auto;
+}
+
+.top-section {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.avatar-section {
+    flex-shrink: 0;
+}
+
+.lawyer-avatar {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    border: 3px solid #ffcccc;
+    object-fit: cover;
+}
+
+.info-section h2 {
+    margin-bottom: 0.4rem;
+    font-size: 1.4rem;
+}
+
+.info-section p {
+    margin: 2px 0;
+    font-size: 0.95rem;
+}
+
+.booking-info h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.booking-columns {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+}
+
+.booking-columns p {
+    font-size: 0.95rem;
+    margin: 4px 0;
+}
+
+.card-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.review-btn {
+    background-color: #ffe483;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.cancel-btn {
+    background-color: #ffb3b3;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+}

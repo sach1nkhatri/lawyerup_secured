@@ -1,0 +1,78 @@
+.popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.content {
+    background-color: #fff;
+    padding: 24px 32px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    width: 320px;
+    text-align: center;
+    animation: scaleIn 0.3s ease;
+}
+
+.content h4 {
+    margin-bottom: 16px;
+    color: #1f2937;
+    font-size: 18px;
+}
+
+input[type="file"] {
+    margin: 12px 0;
+    width: 100%;
+    border: 1px dashed #d1d5db;
+    padding: 8px;
+    cursor: pointer;
+}
+
+button {
+    margin-top: 12px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: #2563eb;
+    color: white;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: #1e40af;
+}
+
+.closeBtn {
+    margin-top: 8px;
+    background-color: #f3f4f6;
+    color: #111827;
+}
+
+.closeBtn:hover {
+    background-color: #e5e7eb;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+.error {
+    color: red;
+    font-size: 0.875rem;
+    margin-top: 8px;
+}

@@ -1,0 +1,153 @@
+.statusContainer {
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    background-color: #f9fafb;
+    min-height: 100vh;
+}
+
+.panel {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    padding: 2rem 2.5rem;
+    width: 100%;
+    max-width: 960px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.avatarWrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #e5e7eb;
+    box-shadow: 0 0 0 4px #f3f4f6;
+}
+
+.grid {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+}
+
+.left, .right {
+    flex: 1;
+    min-width: 260px;
+}
+
+.left p, .right p {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.progressBar {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 2rem 0 1.5rem;
+}
+
+.step {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    border-radius: 10px;
+    background-color: #e5e7eb;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.activeOrange {
+    background: linear-gradient(to right, #f59e0b, #f97316);
+    color: white;
+}
+
+.activeGreen {
+    background: linear-gradient(to right, #22c55e, #16a34a);
+    color: white;
+}
+
+.activeBlue {
+    background: linear-gradient(to right, #3b82f6, #2563eb);
+    color: white;
+}
+
+.actionRow {
+    text-align: center;
+    margin-top: 2.5rem;
+}
+
+.nextButton {
+    padding: 12px 24px;
+    background-color: #4f46e5;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: background-color 0.2s ease;
+}
+
+.nextButton:hover {
+    background-color: #4338ca;
+}
+
+.rejectionBox {
+    background-color: #fef2f2;
+    border: 1px solid #fca5a5;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+}
+
+.rejectionBox h4 {
+    margin: 0 0 0.5rem 0;
+    color: #b91c1c;
+}
+
+.rejectionBox p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #7f1d1d;
+}
+.section {
+    margin-top: 2rem;
+    padding: 1rem 1.5rem;
+    background-color: #f9fafb;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.section h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+.section p, .section li {
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+}
+
+.section a {
+    color: #2563eb;
+    text-decoration: underline;
+}

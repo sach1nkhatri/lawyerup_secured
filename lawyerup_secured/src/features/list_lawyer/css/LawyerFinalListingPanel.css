@@ -1,0 +1,205 @@
+/* Panel container */
+.listing-panel {
+    padding: 2rem;
+    background: linear-gradient(to bottom, #f0f4f8, #e2ecf5);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.listing-panel h2 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: #111827;
+}
+
+.listing-panel p {
+    font-size: 1rem;
+    color: #374151;
+}
+
+/* Form grid layout */
+.listing-grid {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 960px;
+    margin-top: 2rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.listing-left,
+.listing-right {
+    width: 48%;
+    display: flex;
+    flex-direction: column;
+}
+
+.listing-left p {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+    font-weight: 500;
+}
+
+.listing-left input,
+.listing-left select {
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.95rem;
+    background-color: #f9fafb;
+    margin-top: 0.3rem;
+}
+
+/* Profile picture */
+.listing-profile-pic {
+    width: 180px;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 4px solid #6366f1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 1rem;
+}
+
+/* Right section layout */
+.listing-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* Upload + hold section */
+.photo-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.photo-actions input[type="file"] {
+    padding: 0.5rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background-color: #e0f2fe;
+    width: 100%;
+    max-width: 220px;
+    cursor: pointer;
+}
+
+/* Buttons */
+.listing-right button,
+.photo-actions button {
+    margin-top: 0.5rem;
+    padding: 0.7rem 1.4rem;
+    border-radius: 8px;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.listing-right button:hover,
+.photo-actions button:hover {
+    background-color: #e5e7eb;
+}
+
+/* Action buttons */
+.listing-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.listing-save-btn {
+    background-color: #22c55e;
+    color: white;
+    font-weight: bold;
+}
+
+.listing-update-btn {
+    background-color: #3b82f6;
+    color: white;
+    font-weight: bold;
+}
+
+.listing-delete-btn {
+    background-color: #ef4444;
+    color: white;
+    font-weight: bold;
+}
+
+.listing-save-btn:hover {
+    background-color: #16a34a;
+}
+
+.listing-update-btn:hover {
+    background-color: #2563eb;
+}
+
+.listing-delete-btn:hover {
+    background-color: #dc2626;
+}
+
+/* Back to status button */
+.back-button {
+    background-color: #f3f4f6;
+    color: #1f2937;
+    border: 1px solid #cbd5e0;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    margin-bottom: 1rem;
+    align-self: flex-start;
+}
+
+.back-button:hover {
+    background-color: #e2e8f0;
+}
+
+/* 🔁 Responsive */
+@media (max-width: 768px) {
+    .listing-grid {
+        flex-direction: column;
+        padding: 1.5rem;
+    }
+
+    .listing-left,
+    .listing-right {
+        width: 100%;
+    }
+
+    .listing-profile-pic {
+        width: 140px;
+        height: 140px;
+    }
+
+    .photo-actions input[type="file"] {
+        max-width: 100%;
+    }
+
+    .listing-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .listing-save-btn,
+    .listing-update-btn,
+    .listing-delete-btn {
+        width: 100%;
+    }
+}

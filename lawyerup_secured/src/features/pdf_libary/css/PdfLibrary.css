@@ -1,0 +1,44 @@
+.pdf-library {
+    padding: 2rem;
+}
+
+.pdf-library h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+    font-family: 'Georgia', serif;
+}
+
+.pdf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.pdf-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #c8f9f3;
+    padding: 1rem 1.2rem;
+    border-radius: 15px;
+    transition: transform 0.2s ease;
+}
+
+.pdf-card:hover {
+    transform: translateY(-4px);
+}
+
+.pdf-info {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.pdf-icon {
+    height: 30px;
+}
+
+.download-icon {
+    height: 25px;
+    cursor: pointer;
+}

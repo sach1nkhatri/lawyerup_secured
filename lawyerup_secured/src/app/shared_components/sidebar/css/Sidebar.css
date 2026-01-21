@@ -1,0 +1,151 @@
+.sidebar {
+    width: 260px;
+    height: 100vh;
+    background-color: #1e2f44;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: width 0.3s ease;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    overflow: hidden;
+}
+
+.sidebar.collapsed {
+    width: 70px;
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    border-bottom: 1px solid #3a4b5c;
+}
+
+.logo-icon {
+    height: 34px;
+}
+
+.logo-text {
+    height: 20px;
+    object-fit: contain;
+}
+
+.sidebar-menu {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 14px 20px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.menu-item:hover {
+    background-color: #2e4055;
+}
+
+.menu-icon {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+}
+
+.menu-divider {
+    border: none;
+    border-top: 1px solid #3a4b5c;
+    margin: 10px 20px;
+}
+
+.sidebar.collapsed .menu-item span {
+    display: none;
+}
+
+/* Footer user section */
+.sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid #3a4b5c;
+    background-color: #141d2a;
+}
+
+.user-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.user-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.username {
+    font-size: 0.95rem;
+    flex-grow: 1;
+}
+
+.arrow-toggle {
+    width: 16px;
+    height: 16px;
+}
+
+.user-details {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: #ccc;
+    animation: fadeIn 0.3s ease;
+}
+
+.user-details p {
+    margin: 4px 0;
+}
+
+.logout-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 6px;
+    border: none;
+    background-color: #314b66;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.logout-btn:hover {
+    background-color: #3e5f81;
+}
+
+.collapse-btn {
+    background: none;
+    border: none;
+    color: #ccc;
+    font-size: 18px;
+    padding: 10px;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+    margin-top: 1rem;
+    border-top: 1px solid #3a4b5c;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+

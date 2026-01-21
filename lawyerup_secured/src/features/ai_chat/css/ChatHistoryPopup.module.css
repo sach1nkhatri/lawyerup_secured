@@ -1,0 +1,81 @@
+.popupOverlay {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.2);
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 20px;
+}
+
+.popupBox {
+    width: 340px;
+    max-height: 420px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(6px);
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+}
+
+.chatList {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.chatItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: #f9f9f9;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.chatItem:hover {
+    background: #ededed;
+}
+
+.deleteBtn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.newChatBtn {
+    margin-top: 16px;
+    padding: 10px 16px;
+    width: 100%;
+    background-color: #1e2a3a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.closeBtn {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 18px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #444;
+    transition: color 0.2s ease;
+}
+
+.closeBtn:hover {
+    color: #000;
+}

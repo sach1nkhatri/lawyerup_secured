@@ -1,0 +1,121 @@
+.aboutus-section {
+    padding: 3rem 2rem;
+    background-color: #ffffff;
+    min-height: 60rem; /* allows it to grow on small screens */
+    margin-bottom: 1px; /* fixes overlap issue */
+    box-sizing: border-box;
+}
+
+
+
+.aboutus-intro {
+    text-align: center;
+}
+
+.aboutus-intro h2 {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.highlight {
+    font-weight: bold;
+}
+
+.aboutus-intro p {
+    margin: 0.5rem 0;
+    font-size: 1rem;
+}
+
+.gemma-img {
+    width: 120px;
+    margin-top: 0.5rem;
+}
+
+.aboutus-content {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-top: 3rem;
+    gap: 2rem;
+}
+
+/* Feature grid on the left */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    flex: 1;
+}
+
+.feature-card {
+    background-color: #c6f4f0;
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.feature-card img {
+    width: 50px;
+    margin-bottom: 1rem;
+}
+
+.feature-card h4 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+    font-size: 0.9rem;
+    color: #333;
+}
+
+/* Why section on the right */
+.aboutus-right {
+    flex: 1;
+    min-width: 300px;
+}
+
+.aboutus-right h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+
+.aboutus-right p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #333;
+}
+
+.get-started-btn {
+    margin-top: 1.5rem;
+    padding: 0.8rem 1.6rem;
+    background-color: #dfe9ff;
+    color: #1a1a1a;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s ease;
+}
+
+.get-started-btn:hover {
+    background-color: #bedaff;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .aboutus-content {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aboutus-right {
+        text-align: center;
+    }
+}

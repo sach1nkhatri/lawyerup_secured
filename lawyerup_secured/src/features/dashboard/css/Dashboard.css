@@ -1,0 +1,14 @@
+.dashboard-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+.dashboard-content {
+    margin-left: 260px;
+    padding: 2rem;
+    width: 100%;
+}
+
+.sidebar.collapsed ~ .dashboard-content {
+    margin-left: 70px;
+}

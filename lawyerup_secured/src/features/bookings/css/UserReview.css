@@ -1,0 +1,71 @@
+.review-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.review-modal {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    width: 360px;
+    max-width: 90%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: popUp 0.3s ease-out;
+}
+
+@keyframes popUp {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.star-rating {
+    display: flex;
+    font-size: 2.2rem;
+    margin: 1rem 0;
+    justify-content: center;
+}
+
+.star {
+    cursor: pointer;
+    color: #ccc;
+    transition: transform 0.2s, color 0.3s;
+    margin: 0 0.25rem;
+}
+
+.star:hover {
+    transform: scale(1.2);
+}
+
+.star.filled {
+    color: #f5b301;
+}
+
+.review-modal textarea {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    padding: 0.6rem;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.modal-buttons {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: space-between;
+}

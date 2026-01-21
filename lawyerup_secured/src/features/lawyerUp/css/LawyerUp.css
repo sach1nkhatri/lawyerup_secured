@@ -1,0 +1,214 @@
+.lawyerup-container {
+    padding: 2rem;
+}
+
+.lawyer-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+}
+
+.lawyer-card {
+    background-color: #cbf9f5;
+    border-radius: 16px;
+    padding: 1rem;
+    text-align: center;
+    width: 220px;
+}
+
+.lawyer-photo {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.lawyer-info {
+    margin-top: 0.5rem;
+}
+
+.rating {
+    color: #f5b301;
+    margin: 0.5rem 0;
+}
+
+.share-btn {
+    margin-bottom: 0.5rem;
+    background: teal;
+    color: white;
+    padding: 0.4rem;
+    border: none;
+    border-radius: 8px;
+}
+
+.profile-split-view {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.profile-panel {
+    background: #dcfbf9;
+    padding: 2rem;
+    border-radius: 16px;
+    flex: 1;
+}
+
+.book-btn, .back-btn {
+    margin-top: 1rem;
+    padding: 0.6rem 1.2rem;
+    background-color: #007aff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.review-heading {
+    margin-top: 2rem;
+}
+
+.review-list {
+    margin-top: 1rem;
+    background: #bfe1f8;
+    padding: 1rem;
+    border-radius: 12px;
+
+    /* 🧠 Make scrollable */
+    max-height: 200px;
+    overflow-y: auto;
+
+    /* Optional: smooth scroll + hide scrollbar */
+    scroll-behavior: smooth;
+}
+
+/* Optional: style scrollbars (WebKit browsers) */
+.review-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.review-list::-webkit-scrollbar-thumb {
+    background-color: #007aff;
+    border-radius: 4px;
+}
+
+
+.review-item {
+    border-bottom: 1px solid #000000;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.reviewer {
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+.lawyerup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding: 0 1rem;
+}
+
+.lawyerup-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    flex: 1;
+    text-align: center;
+    font-family: 'Georgia', serif;
+}
+
+.lawyerup-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Search bar */
+.search-bar {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    width: 180px;
+}
+
+/* Toggle button */
+.toggle-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 22px;
+}
+
+.toggle-wrapper input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    border-radius: 34px;
+    transition: 0.4s;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.4s;
+}
+
+.toggle-wrapper input:checked + .toggle-slider {
+    background-color: #007aff;
+}
+
+.toggle-wrapper input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+.tab-menu {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.tab-menu button {
+    background: none;
+    border: none;
+    font-weight: bold;
+    padding-bottom: 4px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+
+.tab-menu button.active-tab {
+    border-bottom: 5px solid #84abda;
+    color: #0c0c0c;
+}
+.info-container {
+    padding: 0.5rem;
+    background-color: #eafff7;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.info-box {
+    background: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+}

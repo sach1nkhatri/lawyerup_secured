@@ -1,0 +1,14 @@
+.chatViewWrapper {
+  width: 100%;
+  max-width: 800px;
+  height: 100%;
+  margin: 0 auto;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.chatInputSection {
+  padding: 12px 16px 0;
+  background: #f8f9fb;
+}
