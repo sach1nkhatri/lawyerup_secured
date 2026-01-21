@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { getAccessToken, clearAccessTokenCookie } = require('../utils/cookieHelpers');
+const { logAccessDenied } = require('../utils/auditLogger');
 
 /**
  * Main auth middleware
@@ -18,6 +19,15 @@ const auth = async (req, res, next) => {
   const token = getAccessToken(req);
 
   if (!token) {
+    // Log access denied for missing token
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
+      || req.connection.remoteAddress 
+      || req.ip 
+      || 'unknown';
+    const userAgent = req.headers['user-agent'] || null;
+    
+    logAccessDenied(null, null, clientIp, userAgent, req.path, 'no_token_provided');
+    
     return res.status(401).json({ message: 'Unauthorized: No token provided' });
   }
 
@@ -41,6 +51,16 @@ const auth = async (req, res, next) => {
     if (!user) {
       // User not found - clear cookie and reject
       clearAccessTokenCookie(res);
+      
+      // Log access denied
+      const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
+        || req.connection.remoteAddress 
+        || req.ip 
+        || 'unknown';
+      const userAgent = req.headers['user-agent'] || null;
+      
+      logAccessDenied(decoded.id, null, clientIp, userAgent, req.path, 'user_not_found');
+      
       return res.status(401).json({ message: 'User not found' });
     }
 
@@ -61,6 +81,16 @@ const auth = async (req, res, next) => {
     if (err.name === 'JsonWebTokenError') {
       // Invalid token format - clear cookie if present
       clearAccessTokenCookie(res);
+      
+      // Log access denied
+      const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
+        || req.connection.remoteAddress 
+        || req.ip 
+        || 'unknown';
+      const userAgent = req.headers['user-agent'] || null;
+      
+      logAccessDenied(null, null, clientIp, userAgent, req.path, 'invalid_token');
+      
       return res.status(403).json({ message: 'Forbidden: Invalid token' });
     }
 
@@ -72,9 +102,26 @@ const auth = async (req, res, next) => {
 };
 
 // Admin auth wrapper — uses your existing auth middleware
+// RBAC: Ensures only admin users can access admin routes
 const adminAuth = async (req, res, next) => {
   await auth(req, res, async () => {
     if (req.user.role !== 'admin') {
+      // Log access denied for non-admin users trying to access admin routes
+      const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
+        || req.connection.remoteAddress 
+        || req.ip 
+        || 'unknown';
+      const userAgent = req.headers['user-agent'] || null;
+      
+      logAccessDenied(
+        req.user._id.toString(),
+        req.user.role,
+        clientIp,
+        userAgent,
+        req.path,
+        'insufficient_permissions'
+      );
+      
       return res.status(403).json({ message: 'Admins only' });
     }
     next();

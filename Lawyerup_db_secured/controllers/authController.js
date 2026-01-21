@@ -14,6 +14,10 @@ const {
   logMfaVerifySuccess
 } = require('../utils/securityLogger');
 const {
+  logMfaSetup,
+  logPasswordChange
+} = require('../utils/auditLogger');
+const {
   validatePassword,
   PASSWORD_EXPIRY_DAYS,
   PASSWORD_ERRORS
@@ -98,6 +102,10 @@ exports.login = async (req, res) => {
     || req.connection.remoteAddress 
     || req.ip 
     || 'unknown';
+  
+  // Get user agent for audit logging
+  // Forensic: Helps identify device/browser and detect anomalies
+  const userAgent = req.headers['user-agent'] || null;
 
   try {
     const user = await User.findOne({ email }).select('+password');
@@ -105,7 +113,7 @@ exports.login = async (req, res) => {
     // Security: Don't reveal if user exists or not to prevent enumeration
     // Return same error message for both cases
     if (!user) {
-      logLoginFailed(email || 'unknown', clientIp, 'user_not_found');
+      await logLoginFailed(email || 'unknown', clientIp, userAgent, 'user_not_found');
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
@@ -115,10 +123,12 @@ exports.login = async (req, res) => {
       const lockUntil = user.lockUntil;
       const minutesRemaining = Math.ceil((lockUntil - Date.now()) / (1000 * 60));
       
-      logAccountLocked(
+      await logAccountLocked(
         user._id.toString(),
+        user.role,
         user.email,
         clientIp,
+        userAgent,
         user.failedLoginAttempts,
         lockUntil
       );
@@ -142,17 +152,19 @@ exports.login = async (req, res) => {
       const updatedUser = await User.findById(user._id);
       
       // Log security event
-      logLoginFailed(user.email, clientIp, 'invalid_password');
+      await logLoginFailed(user.email, clientIp, userAgent, 'invalid_password');
       
       // Check if account was just locked
       if (updatedUser.isLocked()) {
         const lockUntil = updatedUser.lockUntil;
         const minutesRemaining = Math.ceil((lockUntil - Date.now()) / (1000 * 60));
         
-        logAccountLocked(
+        await logAccountLocked(
           updatedUser._id.toString(),
+          updatedUser.role,
           updatedUser.email,
           clientIp,
+          userAgent,
           updatedUser.failedLoginAttempts,
           lockUntil
         );
@@ -173,7 +185,7 @@ exports.login = async (req, res) => {
     await user.resetLoginAttempts();
     
     // Log successful login
-    logLoginSuccess(user._id.toString(), user.email, clientIp, user.mfaEnabled);
+    await logLoginSuccess(user._id.toString(), user.role, user.email, clientIp, userAgent, user.mfaEnabled);
     
     // Check if password has expired
     if (user.isPasswordExpired()) {
@@ -377,6 +389,13 @@ exports.updateUserStatus = async (req, res) => {
  * Requires authentication
  */
 exports.mfaSetup = async (req, res) => {
+  // Get client IP and user agent for audit logging
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
+    || req.connection.remoteAddress 
+    || req.ip 
+    || 'unknown';
+  const userAgent = req.headers['user-agent'] || null;
+
   try {
     const user = await User.findById(req.user.id).select('+mfaTempSecret');
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -395,6 +414,9 @@ exports.mfaSetup = async (req, res) => {
     // Save temporary secret (will be confirmed later)
     user.mfaTempSecret = secret.base32;
     await user.save();
+
+    // Log MFA setup event
+    await logMfaSetup(user._id.toString(), user.role, clientIp, userAgent);
 
     // Generate QR code data URL
     const qrCodeDataUrl = await qrcode.toDataURL(secret.otpauth_url);
@@ -461,7 +483,15 @@ exports.mfaConfirm = async (req, res) => {
     user.mfaRecoveryCodes = recoveryCodeHashes;
     await user.save();
 
-    // TODO: Log audit event if audit log exists
+    // Get client IP and user agent for audit logging
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
+      || req.connection.remoteAddress 
+      || req.ip 
+      || 'unknown';
+    const userAgent = req.headers['user-agent'] || null;
+
+    // Log MFA confirmation event
+    await logMfaSetup(user._id.toString(), user.role, clientIp, userAgent);
 
     // Return recovery codes ONCE (only at confirmation)
     res.json({
@@ -490,6 +520,9 @@ exports.mfaVerify = async (req, res) => {
     || req.connection.remoteAddress 
     || req.ip 
     || 'unknown';
+  
+  // Get user agent for audit logging
+  const userAgent = req.headers['user-agent'] || null;
 
   if (!mfaToken) {
     return res.status(400).json({ message: 'mfaToken is required' });
@@ -548,10 +581,12 @@ exports.mfaVerify = async (req, res) => {
     if (!verified) {
       // Log failed MFA verification attempt
       const reason = verificationMethod === 'totp' ? 'invalid_totp' : 'invalid_recovery_code';
-      logMfaVerifyFailed(
+      await logMfaVerifyFailed(
         user._id.toString(),
+        user.role,
         user.email,
         clientIp,
+        userAgent,
         reason
       );
       
@@ -559,10 +594,12 @@ exports.mfaVerify = async (req, res) => {
     }
 
     // Log successful MFA verification
-    logMfaVerifySuccess(
+    await logMfaVerifySuccess(
       user._id.toString(),
+      user.role,
       user.email,
       clientIp,
+      userAgent,
       verificationMethod
     );
 
@@ -734,7 +771,15 @@ exports.changePassword = async (req, res) => {
       PASSWORD_EXPIRY_DAYS // Set expiry date
     );
 
-    // TODO: Log audit event if audit log exists
+    // Get client IP and user agent for audit logging
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
+      || req.connection.remoteAddress 
+      || req.ip 
+      || 'unknown';
+    const userAgent = req.headers['user-agent'] || null;
+
+    // Log password change event
+    await logPasswordChange(user._id.toString(), user.role, clientIp, userAgent);
 
     res.json({ 
       message: 'Password changed successfully',

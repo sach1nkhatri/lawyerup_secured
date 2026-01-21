@@ -23,6 +23,7 @@ const adminControlRoutes = require('./routes/adminControlRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const deleteRoutes = require('./routes/deleteRoutes');
 const analyticsRoutes = require('./routes/analytics');
+const auditRoutes = require('./routes/auditRoutes');
 
 // Express setup
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/faqs', faqRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/manual-payment', paymentRoutes);
 app.use('/api/admin-control', adminControlRoutes);
+app.use('/api/admin', auditRoutes); // Admin audit logs (RBAC protected)
 app.use('/api/delete', deleteRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
