@@ -1,12 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, updateProfile, getAllUsers } = require('../controllers/authController');
+const { 
+  register, 
+  login, 
+  updateProfile, 
+  getAllUsers,
+  registerAdmin,
+  loginAdmin,
+  updateUserStatus,
+  mfaSetup,
+  mfaConfirm,
+  mfaVerify,
+  mfaDisable
+} = require('../controllers/authController');
 const auth = require('../middleware/authMiddleware');
 const User = require('../models/User');
-const { registerAdmin } = require('../controllers/authController');
-const { loginAdmin } = require('../controllers/authController');
-const adminAuth = require('../middleware/authMiddleware').adminAuth; 
-const { updateUserStatus } = require('../controllers/authController');
+const adminAuth = require('../middleware/authMiddleware').adminAuth;
 
 router.post('/signup', register);
 router.post('/login', login);
@@ -44,5 +53,18 @@ router.patch('/status/:id', adminAuth, updateUserStatus);
 router.patch('/update-profile', auth, updateProfile);
 router.post('/admin/register', registerAdmin);
 router.post('/admin/login', loginAdmin);
+
+// ==================== MFA (Multi-Factor Authentication) Routes ====================
+// POST /api/auth/mfa/setup - Generate TOTP secret and QR code (requires auth)
+router.post('/mfa/setup', auth, mfaSetup);
+
+// POST /api/auth/mfa/confirm - Confirm MFA setup with TOTP code (requires auth)
+router.post('/mfa/confirm', auth, mfaConfirm);
+
+// POST /api/auth/mfa/verify - Verify MFA code after login (uses mfaToken, not normal auth)
+router.post('/mfa/verify', mfaVerify);
+
+// POST /api/auth/mfa/disable - Disable MFA (requires auth + password + TOTP/recovery code)
+router.post('/mfa/disable', auth, mfaDisable);
 
 module.exports = router;

@@ -50,7 +50,31 @@ const userSchema = new mongoose.Schema({
   address: {
     type: String,
     default: ''
-  }
+  },
+
+  // Multi-Factor Authentication (MFA) fields
+  mfaEnabled: {
+    type: Boolean,
+    default: false
+  },
+  // TOTP secret (base32 encoded) - stored in plain text for now
+  // TODO: Consider encrypting this field in production for enhanced security
+  mfaSecret: {
+    type: String,
+    default: null,
+    select: false // Never return in queries unless explicitly requested
+  },
+  // Temporary secret used only during MFA setup flow
+  mfaTempSecret: {
+    type: String,
+    default: null,
+    select: false
+  },
+  // Recovery codes (hashed) - one-time use codes for account recovery
+  mfaRecoveryCodes: [{
+    type: String, // Hashed recovery codes
+    select: false
+  }]
 
 }, { timestamps: true });
 

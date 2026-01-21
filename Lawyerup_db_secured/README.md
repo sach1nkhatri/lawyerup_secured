@@ -56,6 +56,7 @@ npm install
 PORT=5000
 MONGO_URI=mongodb+srv://your_mongodb_url
 JWT_SECRET=your_jwt_secret
+MFA_JWT_SECRET=your_mfa_jwt_secret_for_totp_verification
 ```
 
 ### 4. Run the Development Server
@@ -142,6 +143,36 @@ POST   /api/auth/signup
 GET    /api/auth/me
 PATCH  /api/auth/update-profile
 ```
+
+### 🔐 Multi-Factor Authentication (MFA) Routes
+
+LawyerUp supports TOTP-based MFA using Google Authenticator or similar apps.
+
+**Setup Flow:**
+1. **POST /api/auth/mfa/setup** (requires auth)
+   - Generates TOTP secret and QR code
+   - Returns `qrCodeDataUrl` and `otpauth_url`
+   - Scan QR code with authenticator app
+
+2. **POST /api/auth/mfa/confirm** (requires auth)
+   - Body: `{ "code": "123456" }` (6-digit TOTP code)
+   - Verifies TOTP code and enables MFA
+   - Returns recovery codes (save these securely!)
+
+**Login Flow (when MFA is enabled):**
+1. **POST /api/auth/login** (normal login)
+   - If MFA enabled, returns: `{ mfaRequired: true, mfaToken: "...", userId, email }`
+   - If MFA disabled, returns normal token
+
+2. **POST /api/auth/mfa/verify** (no normal auth required)
+   - Body: `{ "mfaToken": "...", "code": "123456" }` OR `{ "mfaToken": "...", "recoveryCode": "ABC12345" }`
+   - Verifies TOTP code or recovery code
+   - Returns normal access token
+
+**Disable MFA:**
+- **POST /api/auth/mfa/disable** (requires auth)
+  - Body: `{ "password": "...", "code": "123456" }` OR `{ "password": "...", "recoveryCode": "ABC12345" }`
+  - Requires password + TOTP code OR recovery code
 
 ---
 

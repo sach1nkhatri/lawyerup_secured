@@ -1,6 +1,11 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const generateToken = require('../utils/generateToken'); // assume you created this
+const generateToken = require('../utils/generateToken');
+const { generateMfaToken } = require('../utils/generateToken');
 
 
 exports.register = async (req, res) => {
@@ -55,7 +60,21 @@ exports.login = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid password' });    
+    if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
+    
+    // Check if MFA is enabled for this user
+    if (user.mfaEnabled) {
+      // Return MFA token instead of access token
+      const mfaToken = generateMfaToken(user._id);
+      return res.json({
+        mfaRequired: true,
+        mfaToken,
+        userId: user._id,
+        email: user.email
+      });
+    }
+    
+    // Normal login flow for users without MFA
     res.json({
       user,
       token: generateToken(user._id)
@@ -189,5 +208,276 @@ exports.updateUserStatus = async (req, res) => {
     res.json({ message: `User status updated to '${status}'`, user });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// ==================== MFA (Multi-Factor Authentication) Functions ====================
+
+/**
+ * POST /api/auth/mfa/setup
+ * Generate TOTP secret and QR code for MFA setup
+ * Requires authentication
+ */
+exports.mfaSetup = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('+mfaTempSecret');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // If MFA is already enabled, return error
+    if (user.mfaEnabled) {
+      return res.status(400).json({ message: 'MFA is already enabled for this account' });
+    }
+
+    // Generate TOTP secret
+    const secret = speakeasy.generateSecret({
+      name: `LawyerUp Secure (${user.email})`,
+      issuer: 'LawyerUp'
+    });
+
+    // Save temporary secret (will be confirmed later)
+    user.mfaTempSecret = secret.base32;
+    await user.save();
+
+    // Generate QR code data URL
+    const qrCodeDataUrl = await qrcode.toDataURL(secret.otpauth_url);
+
+    res.json({
+      otpauth_url: secret.otpauth_url,
+      qrCodeDataUrl,
+      secret: secret.base32 // Return for manual entry (optional)
+    });
+  } catch (err) {
+    console.error('[MFA Setup Error]', err);
+    res.status(500).json({ message: 'Failed to setup MFA', error: err.message });
+  }
+};
+
+/**
+ * POST /api/auth/mfa/confirm
+ * Confirm MFA setup by verifying TOTP code
+ * Requires authentication
+ */
+exports.mfaConfirm = async (req, res) => {
+  const { code } = req.body;
+
+  if (!code) {
+    return res.status(400).json({ message: 'TOTP code is required' });
+  }
+
+  try {
+    const user = await User.findById(req.user.id).select('+mfaTempSecret');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (!user.mfaTempSecret) {
+      return res.status(400).json({ message: 'No pending MFA setup found. Please run /mfa/setup first' });
+    }
+
+    // Verify TOTP code against temporary secret
+    const verified = speakeasy.totp.verify({
+      secret: user.mfaTempSecret,
+      encoding: 'base32',
+      token: code,
+      window: 2 // Allow 2 time steps (60 seconds) tolerance
+    });
+
+    if (!verified) {
+      return res.status(400).json({ message: 'Invalid TOTP code' });
+    }
+
+    // Generate recovery codes (8 codes, 8 characters each)
+    const recoveryCodes = [];
+    const recoveryCodeHashes = [];
+    
+    for (let i = 0; i < 8; i++) {
+      const code = crypto.randomBytes(4).toString('hex').toUpperCase();
+      recoveryCodes.push(code);
+      // Hash recovery code using SHA256
+      const hash = crypto.createHash('sha256').update(code).digest('hex');
+      recoveryCodeHashes.push(hash);
+    }
+
+    // Enable MFA: move temp secret to permanent secret
+    user.mfaEnabled = true;
+    user.mfaSecret = user.mfaTempSecret;
+    user.mfaTempSecret = null;
+    user.mfaRecoveryCodes = recoveryCodeHashes;
+    await user.save();
+
+    // TODO: Log audit event if audit log exists
+
+    // Return recovery codes ONCE (only at confirmation)
+    res.json({
+      message: 'MFA enabled successfully',
+      recoveryCodes, // Store these securely - shown only once!
+      warning: 'Save these recovery codes in a safe place. They will not be shown again.'
+    });
+  } catch (err) {
+    console.error('[MFA Confirm Error]', err);
+    res.status(500).json({ message: 'Failed to confirm MFA', error: err.message });
+  }
+};
+
+/**
+ * POST /api/auth/mfa/verify
+ * Verify MFA code or recovery code after login
+ * Does NOT require normal auth; uses mfaToken instead
+ */
+exports.mfaVerify = async (req, res) => {
+  const { mfaToken, code, recoveryCode } = req.body;
+
+  if (!mfaToken) {
+    return res.status(400).json({ message: 'mfaToken is required' });
+  }
+
+  if (!code && !recoveryCode) {
+    return res.status(400).json({ message: 'Either code or recoveryCode is required' });
+  }
+
+  try {
+    // Verify MFA token
+    if (!process.env.MFA_JWT_SECRET) {
+      return res.status(500).json({ message: 'MFA configuration error' });
+    }
+
+    const decoded = jwt.verify(mfaToken, process.env.MFA_JWT_SECRET);
+    
+    if (decoded.purpose !== 'mfa') {
+      return res.status(400).json({ message: 'Invalid token purpose' });
+    }
+
+    const user = await User.findById(decoded.sub).select('+mfaSecret +mfaRecoveryCodes');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (!user.mfaEnabled) {
+      return res.status(400).json({ message: 'MFA is not enabled for this user' });
+    }
+
+    let verified = false;
+
+    // Verify TOTP code
+    if (code) {
+      verified = speakeasy.totp.verify({
+        secret: user.mfaSecret,
+        encoding: 'base32',
+        token: code,
+        window: 2
+      });
+    }
+    // Verify recovery code
+    else if (recoveryCode) {
+      const recoveryCodeHash = crypto.createHash('sha256').update(recoveryCode.toUpperCase()).digest('hex');
+      const codeIndex = user.mfaRecoveryCodes.findIndex(hash => hash === recoveryCodeHash);
+      
+      if (codeIndex !== -1) {
+        verified = true;
+        // Remove used recovery code (one-time use)
+        user.mfaRecoveryCodes.splice(codeIndex, 1);
+        await user.save();
+      }
+    }
+
+    if (!verified) {
+      return res.status(401).json({ message: 'Invalid MFA code or recovery code' });
+    }
+
+    // Generate and return normal access token
+    const accessToken = generateToken(user._id);
+
+    // Prepare safe user payload (without sensitive fields)
+    const safeUserPayload = {
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      plan: user.plan,
+      contactNumber: user.contactNumber
+    };
+
+    res.json({
+      token: accessToken,
+      user: safeUserPayload
+    });
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'MFA token expired. Please login again' });
+    }
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid MFA token' });
+    }
+    console.error('[MFA Verify Error]', err);
+    res.status(500).json({ message: 'Failed to verify MFA', error: err.message });
+  }
+};
+
+/**
+ * POST /api/auth/mfa/disable
+ * Disable MFA for the authenticated user
+ * Requires authentication, password, and either TOTP code OR recovery code
+ */
+exports.mfaDisable = async (req, res) => {
+  const { password, code, recoveryCode } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ message: 'Password is required' });
+  }
+
+  if (!code && !recoveryCode) {
+    return res.status(400).json({ message: 'Either TOTP code or recovery code is required' });
+  }
+
+  try {
+    const user = await User.findById(req.user.id).select('+password +mfaSecret +mfaRecoveryCodes');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (!user.mfaEnabled) {
+      return res.status(400).json({ message: 'MFA is not enabled for this account' });
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid password' });
+    }
+
+    let verified = false;
+
+    // Verify TOTP code
+    if (code) {
+      verified = speakeasy.totp.verify({
+        secret: user.mfaSecret,
+        encoding: 'base32',
+        token: code,
+        window: 2
+      });
+    }
+    // Verify recovery code
+    else if (recoveryCode) {
+      const recoveryCodeHash = crypto.createHash('sha256').update(recoveryCode.toUpperCase()).digest('hex');
+      const codeIndex = user.mfaRecoveryCodes.findIndex(hash => hash === recoveryCodeHash);
+      
+      if (codeIndex !== -1) {
+        verified = true;
+        // Remove used recovery code
+        user.mfaRecoveryCodes.splice(codeIndex, 1);
+      }
+    }
+
+    if (!verified) {
+      return res.status(401).json({ message: 'Invalid TOTP code or recovery code' });
+    }
+
+    // Disable MFA
+    user.mfaEnabled = false;
+    user.mfaSecret = null;
+    user.mfaTempSecret = null;
+    user.mfaRecoveryCodes = [];
+    await user.save();
+
+    // TODO: Log audit event if audit log exists
+
+    res.json({ message: 'MFA disabled successfully' });
+  } catch (err) {
+    console.error('[MFA Disable Error]', err);
+    res.status(500).json({ message: 'Failed to disable MFA', error: err.message });
   }
 };
