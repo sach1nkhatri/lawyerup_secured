@@ -16,9 +16,12 @@ const {
 const auth = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const adminAuth = require('../middleware/authMiddleware').adminAuth;
+const { loginLimiter, mfaLimiter } = require('../middleware/rateLimiters');
 
 router.post('/signup', register);
-router.post('/login', login);
+// Apply rate limiting to login endpoint to prevent brute-force attacks
+// Security: Limits to 5 attempts per 15 minutes per IP address
+router.post('/login', loginLimiter, login);
 
 // 🔐 Authenticated user route
 router.get('/me', auth, async (req, res) => {
@@ -62,7 +65,9 @@ router.post('/mfa/setup', auth, mfaSetup);
 router.post('/mfa/confirm', auth, mfaConfirm);
 
 // POST /api/auth/mfa/verify - Verify MFA code after login (uses mfaToken, not normal auth)
-router.post('/mfa/verify', mfaVerify);
+// Apply rate limiting to prevent brute-force attacks on MFA codes
+// Security: Limits to 5 attempts per 10 minutes per IP address
+router.post('/mfa/verify', mfaLimiter, mfaVerify);
 
 // POST /api/auth/mfa/disable - Disable MFA (requires auth + password + TOTP/recovery code)
 router.post('/mfa/disable', auth, mfaDisable);

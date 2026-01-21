@@ -6,6 +6,13 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
 const { generateMfaToken } = require('../utils/generateToken');
+const {
+  logLoginFailed,
+  logLoginSuccess,
+  logAccountLocked,
+  logMfaVerifyFailed,
+  logMfaVerifySuccess
+} = require('../utils/securityLogger');
 
 
 exports.register = async (req, res) => {
@@ -54,13 +61,89 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
+  
+  // Get client IP address for security logging
+  // Prefer X-Forwarded-For header if behind proxy, otherwise use connection IP
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
+    || req.connection.remoteAddress 
+    || req.ip 
+    || 'unknown';
 
   try {
     const user = await User.findOne({ email }).select('+password');
-    if (!user) return res.status(404).json({ message: 'User not found' });
     
+    // Security: Don't reveal if user exists or not to prevent enumeration
+    // Return same error message for both cases
+    if (!user) {
+      logLoginFailed(email || 'unknown', clientIp, 'user_not_found');
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Brute-force protection: Check if account is locked
+    // This prevents login attempts even if password is correct
+    if (user.isLocked()) {
+      const lockUntil = user.lockUntil;
+      const minutesRemaining = Math.ceil((lockUntil - Date.now()) / (1000 * 60));
+      
+      logAccountLocked(
+        user._id.toString(),
+        user.email,
+        clientIp,
+        user.failedLoginAttempts,
+        lockUntil
+      );
+      
+      return res.status(423).json({
+        message: `Account is temporarily locked due to multiple failed login attempts. Please try again in ${minutesRemaining} minute(s).`,
+        lockUntil: lockUntil.toISOString(),
+        retryAfter: minutesRemaining
+      });
+    }
+    
+    // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
+    
+    if (!isMatch) {
+      // Register failed login attempt
+      // Default: lock after 5 failed attempts for 30 minutes
+      await user.registerFailedLogin(5, 30);
+      
+      // Reload user from database to get updated lock status
+      const updatedUser = await User.findById(user._id);
+      
+      // Log security event
+      logLoginFailed(user.email, clientIp, 'invalid_password');
+      
+      // Check if account was just locked
+      if (updatedUser.isLocked()) {
+        const lockUntil = updatedUser.lockUntil;
+        const minutesRemaining = Math.ceil((lockUntil - Date.now()) / (1000 * 60));
+        
+        logAccountLocked(
+          updatedUser._id.toString(),
+          updatedUser.email,
+          clientIp,
+          updatedUser.failedLoginAttempts,
+          lockUntil
+        );
+        
+        return res.status(423).json({
+          message: `Account has been temporarily locked due to multiple failed login attempts. Please try again in ${minutesRemaining} minute(s).`,
+          lockUntil: lockUntil.toISOString(),
+          retryAfter: minutesRemaining
+        });
+      }
+      
+      // Return generic error message (don't reveal if account is close to lockout)
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+    
+    // Successful login: Reset failed login attempts
+    // This clears the lock if it exists and resets the counter
+    await user.resetLoginAttempts();
+    
+    // Log successful login
+    logLoginSuccess(user._id.toString(), user.email, clientIp, user.mfaEnabled);
     
     // Check if MFA is enabled for this user
     if (user.mfaEnabled) {
@@ -80,7 +163,8 @@ exports.login = async (req, res) => {
       token: generateToken(user._id)
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('[Login Error]', err);
+    res.status(500).json({ message: 'Server error during login' });
   }
 };
 
@@ -321,9 +405,17 @@ exports.mfaConfirm = async (req, res) => {
  * POST /api/auth/mfa/verify
  * Verify MFA code or recovery code after login
  * Does NOT require normal auth; uses mfaToken instead
+ * 
+ * Security: Rate limiting is applied at route level to prevent brute-force attacks
  */
 exports.mfaVerify = async (req, res) => {
   const { mfaToken, code, recoveryCode } = req.body;
+
+  // Get client IP address for security logging
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
+    || req.connection.remoteAddress 
+    || req.ip 
+    || 'unknown';
 
   if (!mfaToken) {
     return res.status(400).json({ message: 'mfaToken is required' });
@@ -353,9 +445,11 @@ exports.mfaVerify = async (req, res) => {
     }
 
     let verified = false;
+    let verificationMethod = 'unknown';
 
     // Verify TOTP code
     if (code) {
+      verificationMethod = 'totp';
       verified = speakeasy.totp.verify({
         secret: user.mfaSecret,
         encoding: 'base32',
@@ -365,6 +459,7 @@ exports.mfaVerify = async (req, res) => {
     }
     // Verify recovery code
     else if (recoveryCode) {
+      verificationMethod = 'recovery_code';
       const recoveryCodeHash = crypto.createHash('sha256').update(recoveryCode.toUpperCase()).digest('hex');
       const codeIndex = user.mfaRecoveryCodes.findIndex(hash => hash === recoveryCodeHash);
       
@@ -377,8 +472,25 @@ exports.mfaVerify = async (req, res) => {
     }
 
     if (!verified) {
+      // Log failed MFA verification attempt
+      const reason = verificationMethod === 'totp' ? 'invalid_totp' : 'invalid_recovery_code';
+      logMfaVerifyFailed(
+        user._id.toString(),
+        user.email,
+        clientIp,
+        reason
+      );
+      
       return res.status(401).json({ message: 'Invalid MFA code or recovery code' });
     }
+
+    // Log successful MFA verification
+    logMfaVerifySuccess(
+      user._id.toString(),
+      user.email,
+      clientIp,
+      verificationMethod
+    );
 
     // Generate and return normal access token
     const accessToken = generateToken(user._id);
