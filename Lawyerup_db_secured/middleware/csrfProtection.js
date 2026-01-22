@@ -11,32 +11,32 @@ const { logAccessDenied } = require('../utils/auditLogger');
  * 
  * Security: Uses Double Submit Cookie pattern for CSRF protection
  * 
- * Note: For REST APIs with token-based authentication (JWT), CSRF is less critical.
- * However, it's still recommended for cookie-based authentication.
+ * Note: For REST APIs with cookie-based authentication (httpOnly cookies), CSRF protection is critical.
  */
 
 const tokens = new csrf();
 
-// In-memory store for CSRF secrets (keyed by user ID or IP)
-// In production, consider using Redis or database for distributed systems
-const csrfSecrets = new Map();
-
 /**
- * Generate CSRF token
+ * Generate CSRF token and secret
+ * Uses cookie-based secret storage for better scalability
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @returns {String} CSRF token
  */
 const generateCsrfToken = (req, res) => {
-  // Use user ID if authenticated, otherwise use IP address
-  const key = req.user?._id?.toString() || req.ip || 'anonymous';
+  // Get or create secret from cookie
+  let secret = req.cookies._csrf_secret;
   
-  // Get or create secret for this key
-  if (!csrfSecrets.has(key)) {
-    csrfSecrets.set(key, tokens.secretSync());
+  if (!secret) {
+    // Generate new secret and store in httpOnly cookie
+    secret = tokens.secretSync();
+    res.cookie('_csrf_secret', secret, {
+      httpOnly: true, // Secret must be httpOnly to prevent XSS attacks
+      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+      sameSite: 'strict', // CSRF protection
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    });
   }
-  
-  const secret = csrfSecrets.get(key);
   
   // Generate token from secret
   return tokens.create(secret);
@@ -44,15 +44,19 @@ const generateCsrfToken = (req, res) => {
 
 /**
  * Verify CSRF token
- * @param {String} token - CSRF token from request
- * @param {String} secret - Secret from session
+ * @param {String} token - CSRF token from request header
+ * @param {String} secret - Secret from cookie
  * @returns {Boolean} true if token is valid
  */
 const verifyCsrfToken = (token, secret) => {
   if (!token || !secret) {
     return false;
   }
-  return tokens.verify(secret, token);
+  try {
+    return tokens.verify(secret, token);
+  } catch (error) {
+    return false;
+  }
 };
 
 /**
@@ -71,25 +75,30 @@ const csrfProtection = async (req, res, next) => {
     return next(); // Skip CSRF check for GET, HEAD, OPTIONS
   }
 
-  // Skip CSRF for API endpoints that use token-based auth (not cookie-based)
-  // Adjust this based on your authentication strategy
-  const tokenBasedAuthPaths = [
+  // Skip CSRF for public endpoints (login, signup, MFA verify)
+  // These endpoints don't use cookie-based auth initially
+  const publicPaths = [
     '/api/auth/login',
-    '/api/auth/mfa/verify',
-    '/api/auth/logout'
+    '/api/auth/signup',
+    '/api/auth/mfa/verify'
   ];
   
-  if (tokenBasedAuthPaths.some(path => req.path.startsWith(path))) {
-    return next(); // Skip CSRF for token-based auth endpoints
+  if (publicPaths.some(path => req.path === path)) {
+    return next(); // Skip CSRF for public endpoints
+  }
+  
+  // Skip CSRF for logout (handled separately, clears cookies)
+  if (req.path === '/api/auth/logout') {
+    return next();
   }
 
   try {
-    // Get CSRF token from header (X-CSRF-Token) or body (_csrf)
-    const csrfToken = req.headers['x-csrf-token'] || req.body._csrf;
+    // Get CSRF token from header (X-CSRF-Token)
+    // Frontend should send token in X-CSRF-Token header
+    const csrfToken = req.headers['x-csrf-token'];
     
-    // Get secret from in-memory store (keyed by user ID or IP)
-    const key = req.user?._id?.toString() || req.ip || 'anonymous';
-    const secret = csrfSecrets.get(key);
+    // Get secret from cookie (set by generateCsrfToken)
+    const secret = req.cookies._csrf_secret;
     
     if (!csrfToken) {
       // Log CSRF validation failure
@@ -166,17 +175,25 @@ const csrfProtection = async (req, res, next) => {
 
 /**
  * Middleware to add CSRF token to response
- * Call this before rendering pages that need CSRF protection
+ * Generates token and sets it in both response body and cookie
+ * Frontend can read from cookie or response body
  */
 const addCsrfToken = (req, res, next) => {
-  // Generate CSRF token and add to response
+  // Generate CSRF token (also sets secret in httpOnly cookie)
   const token = generateCsrfToken(req, res);
+  
+  // Set token in response for API endpoints
   res.locals.csrfToken = token;
+  
+  // Also set in non-httpOnly cookie for frontend to read (Double Submit Cookie pattern)
+  // Frontend reads this and sends it back in X-CSRF-Token header
   res.cookie('XSRF-TOKEN', token, {
-    httpOnly: false, // Must be readable by JavaScript for Double Submit Cookie pattern
+    httpOnly: false, // Must be readable by JavaScript
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
   });
+  
   next();
 };
 

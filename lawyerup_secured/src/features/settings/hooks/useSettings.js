@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../../app/api/axiosConfig';
 import Swal from 'sweetalert2';
 import API from "../../../app/api/api_endpoints";
 
@@ -66,17 +66,12 @@ export const useSettings = () => {
 
         if (confirm.isConfirmed) {
             try {
-                const token = localStorage.getItem('lawyerup_token');
-                const res = await axios.patch(`${process.env.REACT_APP_API_URL}auth/update-profile`, {
+                const res = await axiosInstance.patch(`${API.AUTH}/update-profile`, {
                     name: formData.name,
                     contactNumber: formData.phone,
                     state: formData.state,
                     city: formData.city,
                     address: formData.address,
-                }, {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
                 });
 
                 await Swal.fire('Updated!', 'Your profile was saved.', 'success');
@@ -115,11 +110,8 @@ export const useSettings = () => {
 
     // Clear bookings & chats
     const clearBookingAndChat = async () => {
-        const token = localStorage.getItem('lawyerup_token');
         try {
-            await axios.patch(`${API.BOOKINGS}/clear-user-history`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axiosInstance.patch(`${API.BOOKINGS}/clear-user-history`, {});
             await Swal.fire('Cleared!', 'Your booking and chat history was removed.', 'success');
         } catch (err) {
             Swal.fire('Error', 'Failed to clear booking & chat history.', 'error');
@@ -128,11 +120,8 @@ export const useSettings = () => {
 
     // Clear AI chat history
     const clearLawAiData = async () => {
-        const token = localStorage.getItem('lawyerup_token');
         try {
-            await axios.delete(`${API.AI}/chats/all`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axiosInstance.delete(`${API.AI}/chats/all`);
             await Swal.fire('Cleared!', 'Your Law AI chat history was deleted.', 'success');
         } catch (err) {
             Swal.fire('Error', 'Failed to delete Law AI data.', 'error');
@@ -141,11 +130,8 @@ export const useSettings = () => {
 
     // 💀 Delete user account
     const deleteAccount = async () => {
-        const token = localStorage.getItem('lawyerup_token');
         try {
-            await axios.delete(`${process.env.REACT_APP_API_URL}delete/account`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axiosInstance.delete(`${API.AUTH}/delete-account`);
             localStorage.removeItem('lawyerup_user');
             localStorage.removeItem('lawyerup_token');
             await Swal.fire('Deleted!', 'Your account has been permanently removed.', 'success');

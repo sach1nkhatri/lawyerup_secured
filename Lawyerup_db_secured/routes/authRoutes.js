@@ -34,10 +34,20 @@ router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json(user);
+    // Return user object directly (frontend handles both formats)
+    // CSRF token is automatically added via addCsrfToken middleware
+    res.json({ user });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
+});
+
+// GET /api/auth/csrf-token - Get CSRF token for frontend
+// Public endpoint to fetch CSRF token (needed before first authenticated request)
+router.get('/csrf-token', (req, res) => {
+  const { generateCsrfToken } = require('../middleware/csrfProtection');
+  const token = generateCsrfToken(req, res);
+  res.json({ csrfToken: token });
 });
 
 

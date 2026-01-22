@@ -1,9 +1,3 @@
-/**
- * Password Policy Configuration
- * 
- * Defines strong password requirements to prevent weak passwords
- * and enhance account security.
- */
 
 // Password length constraints
 const PASSWORD_MIN_LENGTH = 8;

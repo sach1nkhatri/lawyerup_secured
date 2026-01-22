@@ -1,18 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../css/LoginSignup.css';
 import hammerIcon from '../../../app/assets/hammer.png';
 import logoIcon from '../../../app/assets/logo2.png';
 import logoText from '../../../app/assets/textlogoblack.png';
 import useAuthForm from '../hooks/useAuthForm';
+import MfaVerification from './MfaVerification';
+import ForgotPassword from './ForgotPassword';
 
 const LoginSignUp = () => {
+    const navigate = useNavigate();
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    
     const {
         formData,
         isLogin,
         setIsLogin,
         handleInputChange,
         handleSubmit,
+        mfaRequired,
+        mfaData,
+        setMfaRequired,
     } = useAuthForm();
+
+    const handleMfaSuccess = (user) => {
+        setMfaRequired(false);
+        navigate('/dashboard');
+    };
+
+    const handleMfaCancel = () => {
+        setMfaRequired(false);
+        // Clear form
+        handleInputChange({ target: { name: 'email', value: '' } });
+        handleInputChange({ target: { name: 'password', value: '' } });
+    };
 
     const renderSignupFields = () => (
         <>
@@ -45,6 +66,40 @@ const LoginSignUp = () => {
         </>
     );
 
+    // Show MFA verification if required
+    if (mfaRequired && mfaData) {
+        return (
+            <div className="login-signup-page">
+                <div className="auth-container">
+                    <div className="logo-wrap">
+                        <img src={logoIcon} alt="Logo" className="logo-icon" />
+                        <img src={logoText} alt="LawyerUp" className="logo-text" />
+                    </div>
+                    <MfaVerification 
+                        mfaData={mfaData} 
+                        onSuccess={handleMfaSuccess}
+                        onCancel={handleMfaCancel}
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    // Show forgot password form
+    if (showForgotPassword) {
+        return (
+            <div className="login-signup-page">
+                <div className="auth-container">
+                    <div className="logo-wrap">
+                        <img src={logoIcon} alt="Logo" className="logo-icon" />
+                        <img src={logoText} alt="LawyerUp" className="logo-text" />
+                    </div>
+                    <ForgotPassword onBack={() => setShowForgotPassword(false)} />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="login-signup-page">
             <div className="auth-container">
@@ -68,7 +123,7 @@ const LoginSignUp = () => {
                             <input
                                 type="email"
                                 name="email"
-                                placeholder="Email or Username"
+                                placeholder="Email"
                                 value={formData.email}
                                 onChange={handleInputChange}
                                 required
@@ -84,14 +139,19 @@ const LoginSignUp = () => {
                             <button type="submit">{isLogin ? 'Login' : 'Sign Up'}</button>
 
                             {isLogin && (
-                                <a href="https://sachin.bio/contact" className="forgot-pass">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowForgotPassword(true)}
+                                    className="forgot-pass"
+                                    style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', textDecoration: 'underline' }}
+                                >
                                     Forgot password?
-                                </a>
+                                </button>
                             )}
                         </form>
 
                         <p className="switch-form">
-                            {isLogin ? "Don’t have an account?" : "Already have an account?"}{' '}
+                            {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
                             <button
                                 type="button"
                                 className="switch-link"

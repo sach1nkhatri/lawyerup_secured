@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 
 /**
  * Rate limiter for login endpoint
@@ -19,12 +20,14 @@ const loginLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  // Use default IP key generator (handles IPv6 correctly)
+  // Use ipKeyGenerator helper to properly handle IPv6 addresses
   // OWASP: Proper IP handling prevents IPv6 users from bypassing rate limits
   keyGenerator: (req) => {
-    // Use express-rate-limit's built-in IP detection
-    // This properly handles IPv6 addresses and prevents bypass
-    return req.ip || req.socket.remoteAddress || 'unknown';
+    // Get IP address from request (handles X-Forwarded-For header)
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    // Use ipKeyGenerator helper to properly handle IPv6 addresses
+    // This prevents IPv6 users from bypassing rate limits by using different subnets
+    return ipKeyGenerator(ip);
   },
   // Custom handler for when limit is exceeded
   handler: (req, res) => {
@@ -54,12 +57,14 @@ const mfaLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Use default IP key generator (handles IPv6 correctly)
+  // Use ipKeyGenerator helper to properly handle IPv6 addresses
   // OWASP: Proper IP handling prevents IPv6 users from bypassing rate limits
   keyGenerator: (req) => {
-    // Use express-rate-limit's built-in IP detection
-    // This properly handles IPv6 addresses and prevents bypass
-    return req.ip || req.socket.remoteAddress || 'unknown';
+    // Get IP address from request (handles X-Forwarded-For header)
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    // Use ipKeyGenerator helper to properly handle IPv6 addresses
+    // This prevents IPv6 users from bypassing rate limits by using different subnets
+    return ipKeyGenerator(ip);
   },
   handler: (req, res) => {
     res.status(429).json({

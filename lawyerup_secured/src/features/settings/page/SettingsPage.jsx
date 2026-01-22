@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 // import { Sun, Moon } from 'lucide-react';
 import profileImage from '../../../app/assets/avatar.png';
 import PlanCardInSettings from '../components/PlanCardInSettings';
@@ -6,6 +6,8 @@ import { useSettings } from '../hooks/useSettings';
 import '../css/SettingPage.css';
 import PrivacyModal from "../modal/PrivacyModal";
 import AboutModal from "../modal/AboutModal";
+import PasswordChangeModal from '../components/PasswordChangeModal';
+import MfaSetup from '../../../features/auth/components/MfaSetup';
 
 
 
@@ -28,6 +30,22 @@ const Settings = () => {
 
     const [showPrivacy, setShowPrivacy] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
+    const [showPasswordChange, setShowPasswordChange] = useState(false);
+    const [showMfaSetup, setShowMfaSetup] = useState(false);
+    const [mfaEnabled, setMfaEnabled] = useState(false);
+
+    // Check MFA status from user data
+    useEffect(() => {
+        const storedUser = localStorage.getItem('lawyerup_user');
+        if (storedUser) {
+            try {
+                const parsed = JSON.parse(storedUser);
+                setMfaEnabled(parsed.mfaEnabled || false);
+            } catch (e) {
+                console.error('Failed to parse user data', e);
+            }
+        }
+    }, []);
 
     const isProfileIncomplete = !formData.state || !formData.city || !formData.address;
 
@@ -99,6 +117,28 @@ const Settings = () => {
                         <PlanCardInSettings plan={formData.plan || 'Free Trial'} />
                     </div>
                 )}
+                {/* ===== Security Section ===== */}
+                <div className="privacy-section">
+                    <h3>Security</h3>
+                    <div className="privacy-buttons">
+                        <button className="info-btn" onClick={() => setShowPasswordChange(true)}>
+                            Change Password
+                        </button>
+                        {!mfaEnabled ? (
+                            <button className="info-btn" onClick={() => setShowMfaSetup(true)}>
+                                Enable Two-Factor Authentication
+                            </button>
+                        ) : (
+                            <button className="info-btn" onClick={() => {
+                                // TODO: Implement MFA disable
+                                alert('MFA disable functionality coming soon');
+                            }}>
+                                Disable Two-Factor Authentication
+                            </button>
+                        )}
+                    </div>
+                </div>
+
                 {/* ===== Privacy Section ===== */}
                 {/* ===== Legal & Info Section ===== */}
                 <div className="privacy-section">
@@ -115,6 +155,8 @@ const Settings = () => {
                     {/* === Popups === */}
                     {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
                     {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+                    {showPasswordChange && <PasswordChangeModal isOpen={showPasswordChange} onClose={() => setShowPasswordChange(false)} />}
+                    {showMfaSetup && <MfaSetup onComplete={() => { setShowMfaSetup(false); setMfaEnabled(true); }} onCancel={() => setShowMfaSetup(false)} />}
                 </div>
 
                 {/* ===== Danger Zone ===== */}

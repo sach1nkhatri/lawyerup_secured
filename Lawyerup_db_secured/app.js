@@ -44,10 +44,34 @@ app.use(securityHeaders);
 
 // 2. CORS Configuration
 // OWASP: A05:2021 – Security Misconfiguration
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*', // Configure allowed origins in production
-  credentials: true // Required for httpOnly cookies
-}));
+// IMPORTANT: When credentials: true, origin cannot be '*' - must specify origins
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, or server-to-server)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = process.env.ALLOWED_ORIGINS 
+      ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+      : ['http://localhost:3000', 'http://localhost:3001']; // Default for development
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // In development, allow localhost origins
+      if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
+  credentials: true, // Required for httpOnly cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  exposedHeaders: ['X-CSRF-Token']
+};
+
+app.use(cors(corsOptions));
 
 // 3. Cookie Parser
 app.use(cookieParser());
@@ -57,7 +81,16 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// 5. Input Sanitization
+// 5. CSRF Protection
+// Protects state-changing routes from CSRF attacks
+// OWASP: A01:2021 – Broken Access Control
+const { csrfProtection, addCsrfToken } = require('./middleware/csrfProtection');
+// Add CSRF token to all responses (sets cookie)
+app.use(addCsrfToken);
+// Protect state-changing routes with CSRF validation
+app.use(csrfProtection);
+
+// 6. Input Sanitization
 // Sanitizes user input to prevent XSS and injection attacks
 // OWASP: A03:2021 – Injection
 app.use(sanitizeInput);
