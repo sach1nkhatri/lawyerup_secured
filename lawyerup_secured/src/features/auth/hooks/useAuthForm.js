@@ -10,14 +10,40 @@ const useAuthForm = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [mfaRequired, setMfaRequired] = useState(false);
     const [mfaData, setMfaData] = useState(null);
+    const [passwordErrors, setPasswordErrors] = useState([]);
 
     const [formData, setFormData] = useState({
         role: 'user',
         fullName: '',
         email: '',
         password: '',
+        confirmPassword: '',
         contactNumber: '',
     });
+
+    // Client-side password validation (matches backend policy)
+    const validatePassword = (password) => {
+        const errors = [];
+        if (password.length < 8) {
+            errors.push('Password must be at least 8 characters long');
+        }
+        if (password.length > 128) {
+            errors.push('Password must be no more than 128 characters long');
+        }
+        if (!/[A-Z]/.test(password)) {
+            errors.push('Password must contain at least one uppercase letter');
+        }
+        if (!/[a-z]/.test(password)) {
+            errors.push('Password must contain at least one lowercase letter');
+        }
+        if (!/[0-9]/.test(password)) {
+            errors.push('Password must contain at least one number');
+        }
+        if (!/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(password)) {
+            errors.push('Password must contain at least one special character');
+        }
+        return errors;
+    };
 
     useEffect(() => {
         // Check if user is already authenticated via cookie
@@ -44,10 +70,36 @@ const useAuthForm = () => {
 
     const handleInputChange = ({ target: { name, value } }) => {
         setFormData((prev) => ({ ...prev, [name]: value }));
+        
+        // Validate password in real-time for signup
+        if (!isLogin && name === 'password') {
+            const errors = validatePassword(value);
+            setPasswordErrors(errors);
+        } else if (isLogin || name !== 'password') {
+            // Clear password errors when switching to login or changing other fields
+            setPasswordErrors([]);
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Validate passwords match during signup
+        if (!isLogin && formData.password !== formData.confirmPassword) {
+            notify('error', 'Passwords do not match');
+            return;
+        }
+        
+        // Validate password strength during signup
+        if (!isLogin) {
+            const errors = validatePassword(formData.password);
+            if (errors.length > 0) {
+                setPasswordErrors(errors);
+                notify('error', 'Password does not meet requirements');
+                return;
+            }
+        }
+        
         startLoader();
 
         const endpoint = `${API.AUTH}/${isLogin ? 'login' : 'signup'}`;
@@ -144,6 +196,7 @@ const useAuthForm = () => {
         mfaRequired,
         mfaData,
         setMfaRequired,
+        passwordErrors, // Export password errors for strength meter
     };
 };
 

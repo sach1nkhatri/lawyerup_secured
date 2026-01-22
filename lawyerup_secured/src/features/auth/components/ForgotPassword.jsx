@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { notify } from '../../../app/shared_components/utils/notify';
 import { startLoader, stopLoader } from '../../../app/shared_components/utils/loader';
+import PasswordStrengthMeter from './PasswordStrengthMeter';
 import '../css/LoginSignup.css';
 
 const ForgotPassword = ({ onBack }) => {
@@ -136,11 +137,7 @@ const ForgotPassword = ({ onBack }) => {
                             }}
                             required
                         />
-                        {passwordErrors.length > 0 && (
-                            <ul style={{ color: 'red', fontSize: '12px', textAlign: 'left', margin: '5px 0' }}>
-                                {passwordErrors.map((err, idx) => <li key={idx}>{err}</li>)}
-                            </ul>
-                        )}
+                        <PasswordStrengthMeter password={newPassword} errors={passwordErrors} />
                         <input
                             type="password"
                             placeholder="Confirm New Password"

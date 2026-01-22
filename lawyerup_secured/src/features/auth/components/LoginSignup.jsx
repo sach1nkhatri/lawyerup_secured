@@ -7,6 +7,7 @@ import logoText from '../../../app/assets/textlogoblack.png';
 import useAuthForm from '../hooks/useAuthForm';
 import MfaVerification from './MfaVerification';
 import ForgotPassword from './ForgotPassword';
+import PasswordStrengthMeter from './PasswordStrengthMeter';
 
 const LoginSignUp = () => {
     const navigate = useNavigate();
@@ -21,6 +22,7 @@ const LoginSignUp = () => {
         mfaRequired,
         mfaData,
         setMfaRequired,
+        passwordErrors,
     } = useAuthForm();
 
     const handleMfaSuccess = (user) => {
@@ -128,14 +130,67 @@ const LoginSignUp = () => {
                                 onChange={handleInputChange}
                                 required
                             />
-                            <input
-                                type="password"
-                                name="password"
-                                placeholder="Password"
-                                value={formData.password}
-                                onChange={handleInputChange}
-                                required
-                            />
+                            <div style={{ position: 'relative', width: '100%' }}>
+                                <input
+                                    type="password"
+                                    name="password"
+                                    placeholder="Password"
+                                    value={formData.password}
+                                    onChange={handleInputChange}
+                                    required
+                                    style={{
+                                        marginBottom: !isLogin && formData.password ? '0' : '8px'
+                                    }}
+                                />
+                                {/* Show password strength meter only during signup */}
+                                {!isLogin && (
+                                    <PasswordStrengthMeter 
+                                        password={formData.password} 
+                                        errors={passwordErrors}
+                                    />
+                                )}
+                            </div>
+                            {/* Show confirm password field only during signup */}
+                            {!isLogin && (
+                                <div style={{ position: 'relative', width: '100%' }}>
+                                    <input
+                                        type="password"
+                                        name="confirmPassword"
+                                        placeholder="Confirm Password"
+                                        value={formData.confirmPassword}
+                                        onChange={handleInputChange}
+                                        required
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            fontSize: '16px',
+                                            marginBottom: formData.confirmPassword && formData.password !== formData.confirmPassword ? '5px' : '10px',
+                                            border: formData.confirmPassword && formData.password !== formData.confirmPassword ? '2px solid #d32f2f' : '2px solid #ddd',
+                                            borderRadius: '4px'
+                                        }}
+                                    />
+                                    {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                                        <p style={{ 
+                                            color: '#d32f2f', 
+                                            fontSize: '12px', 
+                                            marginTop: '5px', 
+                                            marginBottom: '10px' 
+                                        }}>
+                                            Passwords do not match
+                                        </p>
+                                    )}
+                                    {formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length > 0 && (
+                                        <p style={{ 
+                                            color: '#388e3c', 
+                                            fontSize: '12px', 
+                                            marginTop: '5px', 
+                                            marginBottom: '10px' 
+                                        }}>
+                                            ✓ Passwords match
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                             <button type="submit">{isLogin ? 'Login' : 'Sign Up'}</button>
 
                             {isLogin && (
@@ -155,7 +210,13 @@ const LoginSignUp = () => {
                             <button
                                 type="button"
                                 className="switch-link"
-                                onClick={() => setIsLogin(!isLogin)}
+                                onClick={() => {
+                                    setIsLogin(!isLogin);
+                                    // Clear confirm password when switching modes
+                                    if (!isLogin) {
+                                        handleInputChange({ target: { name: 'confirmPassword', value: '' } });
+                                    }
+                                }}
                             >
                                 {isLogin ? 'Sign Up' : 'Login'}
                             </button>

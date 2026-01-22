@@ -36,7 +36,7 @@ exports.register = async (req, res) => {
 
   try {
     // Validate password against policy
-    // TODO: Frontend should implement password strength meter for better UX
+    // Frontend implements password strength meter for better UX
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.valid) {
       return res.status(400).json({
@@ -294,7 +294,6 @@ exports.registerAdmin = async (req, res) => {
 
   try {
     // Validate password against policy (admins must also follow password policy)
-    // TODO: Frontend should implement password strength meter for better UX
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.valid) {
       return res.status(400).json({
@@ -331,7 +330,7 @@ exports.registerAdmin = async (req, res) => {
     setAccessTokenCookie(res, token);
 
     res.status(201).json({
-      message: '✅ Admin registered successfully',
+      message: 'Admin registered successfully',
       user: {
         id: newAdmin._id,
         fullName: newAdmin.fullName,
